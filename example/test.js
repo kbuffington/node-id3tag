@@ -1,4 +1,4 @@
-const nodeID3 = require('../index.js')
+const nodeID3 = require('../index.ts')
 const fs = require('fs')
 
 
@@ -58,7 +58,7 @@ nodeID3.read("./example/Kevin Penkin - Tomorrow.mp3", function(err, tags) {
       console.log(tags)
     })
   })
-  
+
 })
 */
 

@@ -1,37 +1,40 @@
 {
-  "name": "node-id3",
-  "version": "0.1.5",
-  "description": "Pure JavaScript ID3 Tag writer/reader",
-  "author": "Jan Metzger <jan.metzger@gmx.net>",
-  "main": "index.js",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/Zazama/node-id3.git"
-  },
-  "bugs": {
-    "url": "https://github.com/Zazama/node-id3/issues"
-  },
-  "keywords": [
-    "id3",
-    "mp3",
-    "tags",
-    "music"
-  ],
-  "licenses": [
-    {
-      "type": "MIT",
-      "url": "https://github.com/Zazama/node-id3/raw/master/LICENSE"
+    "name": "node-id3",
+    "version": "0.2.0",
+    "description": "Pure JavaScript ID3 Tag writer/reader",
+    "author": "Jan Metzger <jan.metzger@gmx.net>",
+    "main": "index.js",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/Zazama/node-id3.git"
+    },
+    "bugs": {
+        "url": "https://github.com/Zazama/node-id3/issues"
+    },
+    "keywords": [
+        "id3",
+        "mp3",
+        "tags",
+        "music"
+    ],
+    "licenses": [
+        {
+            "type": "MIT",
+            "url": "https://github.com/Zazama/node-id3/raw/master/LICENSE"
+        }
+    ],
+    "homepage": "https://github.com/Zazama/node-id3#readme",
+    "directories": {
+        "example": "example"
+    },
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "license": "MIT",
+    "dependencies": {
+        "iconv-lite": "^0.4.15"
+    },
+    "devDependencies": {
+        "@types/node": "^10.7.1"
     }
-  ],
-  "homepage": "https://github.com/Zazama/node-id3#readme",
-  "directories": {
-    "example": "example"
-  },
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "license": "MIT",
-  "dependencies": {
-    "iconv-lite": "^0.4.15"
-  }
 }
