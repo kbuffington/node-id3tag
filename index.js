@@ -2,62 +2,11 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const fs = require("fs");
 const iconv = require("iconv-lite");
+const frame_definitions_1 = require("./frame-definitions");
 /*
  **  Used specification: http://id3.org/id3v2.3.0
  */
 const DEFAULT_PADDING_SIZE = 2048; // Padding sized used when file has no tag, or new tag won't fit
-/*
- **  List of official text information frames
- **  LibraryName: "T***"
- **  Value is the ID of the text frame specified in the link above,
- ** the object's keys are just for simplicity, you can also use the ID directly.
- */
-const TFrames = {
-    album: 'TALB',
-    albumSortOrder: 'TSOA',
-    artist: 'TPE1',
-    artistSortOrder: 'TSOP',
-    bpm: 'TBPM',
-    composer: 'TCOM',
-    conductor: 'TPE3',
-    contentGroup: 'TIT1',
-    copyright: 'TCOP',
-    date: 'TDRC',
-    encodedBy: 'TENC',
-    encodingTechnology: 'TSSE',
-    fileOwner: 'TOWN',
-    fileType: 'TFLT',
-    genre: 'TCON',
-    initialKey: 'TKEY',
-    internetRadioName: 'TRSN',
-    internetRadioOwner: 'TRSO',
-    isrc: 'TSRC',
-    language: 'TLAN',
-    length: 'TLEN',
-    mediaType: 'TMED',
-    mood: 'TMOO',
-    originalArtist: 'TOPE',
-    originalFilename: 'TOFN',
-    originalReleaseDate: 'TDOR',
-    originalTextwriter: 'TOLY',
-    originalTitle: 'TOAL',
-    originalYear: 'TORY',
-    partOfSet: 'TPOS',
-    performerInfo: 'TPE2',
-    playlistDelay: 'TDLY',
-    producedNotice: 'TPRO',
-    publisher: 'TPUB',
-    recordingDates: 'TRDA',
-    remixArtist: 'TPE4',
-    size: 'TSIZ',
-    subtitle: 'TIT3',
-    textWriter: 'TEXT',
-    time: 'TIME',
-    title: 'TIT2',
-    titleSortOrder: 'TSOT',
-    trackNumber: 'TRCK',
-    year: 'TYER',
-};
 /*
  **  Officially available types of the picture frame
  */
@@ -115,6 +64,14 @@ class NodeID3 {
                 read: NodeID3.prototype.readUserDefinedFrame.bind(this),
             },
         };
+    }
+    getVersionedFrameDefinitions(version) {
+        if (version === frame_definitions_1.TagVersion.v23) {
+            return frame_definitions_1.ID3v23Frames;
+        }
+        else {
+            return frame_definitions_1.ID3v24Frames;
+        }
     }
     /*
     **  Write passed tags to a file/buffer @ filebuffer
@@ -203,6 +160,7 @@ class NodeID3 {
     }
     create(tags, fn) {
         const frames = [];
+        const TFrames = this.getVersionedFrameDefinitions(frame_definitions_1.TagVersion.v24);
         //  Push a header for the ID3-Frame
         frames.push(this.createTagHeader());
         const tagNames = Object.keys(tags);
@@ -289,6 +247,7 @@ class NodeID3 {
     */
     update(tags, filebuffer, fn) {
         const rawTags = {};
+        const TFrames = this.getVersionedFrameDefinitions(frame_definitions_1.TagVersion.v24); // TODO: this seems bad to assume
         Object.keys(tags).map(tagKey => {
             //  if js name passed (TF)
             if (TFrames[tagKey]) {
@@ -343,6 +302,10 @@ class NodeID3 {
         }
         const tempBuffer = new Buffer(filebuffer.toString('hex', framePosition, framePosition + 10), 'hex');
         const version = this.getTagVersion(tempBuffer);
+        if (version === frame_definitions_1.TagVersion.unknown) {
+            return false; // bad tag
+        }
+        const TFrames = this.getVersionedFrameDefinitions(version);
         const frameSize = this.getTagsSize(tempBuffer) + 10;
         const ID3FrameBody = new Buffer(frameSize - 10 + 1);
         filebuffer.copy(ID3FrameBody, 0, framePosition + 10);
@@ -376,11 +339,16 @@ class NodeID3 {
                 decoded = iconv.decode(frame.body.slice(1), this.getEncodingName(frame.body)).replace(/\0/g, multiValueSplitter);
                 decoded = this.splitMultiValues(decoded);
                 tags.raw[frame.name] = decoded;
+                let found = false;
                 Object.keys(TFrames).map((key) => {
                     if (TFrames[key] === frame.name) {
                         tags[key] = decoded;
+                        found = true;
                     }
                 });
+                if (!found && frame_definitions_1.LegacyFramesRemapped[frame.name] !== undefined) {
+                    tags[frame_definitions_1.LegacyFramesRemapped[frame.name]] = decoded;
+                }
             }
             else {
                 //  Check if non-text frame is supported
@@ -421,10 +389,18 @@ class NodeID3 {
     getTagVersion(buffer) {
         const framePosition = String.prototype.indexOf.call(buffer, (new Buffer('ID3')));
         if (framePosition === -1 || framePosition > 20) {
-            return -1;
+            return frame_definitions_1.TagVersion.unknown;
         }
         else {
-            return buffer[framePosition + 3];
+            if (buffer[framePosition + 3] === 3) {
+                return frame_definitions_1.TagVersion.v23;
+            }
+            else if (buffer[framePosition + 3] === 4) {
+                return frame_definitions_1.TagVersion.v24;
+            }
+            else {
+                return frame_definitions_1.TagVersion.unknown;
+            }
         }
     }
     /*
@@ -863,9 +839,18 @@ class NodeID3 {
         if (!frame) {
             return tags;
         }
-        const decodedFrame = iconv.decode(frame, this.getEncodingName(frame));
-        tags.description = decodedFrame.substring(1, frame.indexOf(0x00, 1)).replace(/\0/g, '');
-        const values = decodedFrame.substring(frame.indexOf(0x00, 1) + 1).replace(/\0/g, multiValueSplitter);
+        const decodedFrame = iconv.decode(frame.slice(1), this.getEncodingName(frame));
+        let values;
+        if (this.getEncodingName(frame) === 'utf16' || this.getEncodingName(frame) === 'UTF-16BE') {
+            const nullBuffer = new Buffer([0x00, 0x00]);
+            const descriptionEnd = frame.indexOf(nullBuffer, 1) / 2;
+            tags.description = decodedFrame.substring(0, descriptionEnd).replace(/\0/g, '');
+            values = decodedFrame.substring(descriptionEnd + 1).replace(/\0/g, multiValueSplitter);
+        }
+        else {
+            tags.description = decodedFrame.substring(0, frame.indexOf(0x00, 1)).replace(/\0/g, '');
+            values = decodedFrame.substring(frame.indexOf(0x00, 1) + 1).replace(/\0/g, multiValueSplitter);
+        }
         tags.values = this.splitMultiValues(values);
         return tags;
     }
