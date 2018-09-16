@@ -30,6 +30,10 @@
 			"avoid-template",
 			"avoid-escape"
 		],
+		"max-line-length": [
+			true,
+			140
+		],
 		"no-bitwise": false,
 		"no-console": false,
 		"ban-types": false,

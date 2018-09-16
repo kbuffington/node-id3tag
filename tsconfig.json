@@ -1,6 +1,8 @@
 {
-    "compileOnSave": false,
+    "compileOnSave": true,
     "compilerOptions": {
+        "module": "commonjs",
+        "watch": true,
         "target": "es2015",
         "moduleResolution": "node",
         "pretty": true,
@@ -13,5 +15,11 @@
         "skipLibCheck": true,
         "allowJs": true,
         "jsx": "preserve"
-    }
+    },
+    "exclude": [
+		"node_modules",
+		"typings/browser.d.ts",
+        "typings/browser",
+        "example"
+	]
 }

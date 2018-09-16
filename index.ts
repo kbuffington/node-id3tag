@@ -98,6 +98,8 @@ interface Comment {
 interface Frame {
     name: string;
     body: Buffer;
+    unsynchronized: boolean;
+    dataLengthIndicator: boolean;
 }
 
 export class NodeID3 {
@@ -367,12 +369,13 @@ export class NodeID3 {
             return false;
         }
         const tempBuffer = new Buffer(filebuffer.toString('hex', framePosition, framePosition + 10), 'hex');
-        const frameSize = this.getFrameSize(tempBuffer, true) + 10;
+        const version = this.getTagVersion(tempBuffer);
+        const frameSize = this.getTagsSize(tempBuffer) + 10;
         const ID3FrameBody = new Buffer(frameSize - 10 + 1);
         filebuffer.copy(ID3FrameBody, 0, framePosition + 10);
 
         //  Now, get frame for frame by given size to support unkown tags etc.
-        const frames = [];
+        const frames: Frame[] = [];
         const tags: any = {
             raw: {},
         };
@@ -380,7 +383,8 @@ export class NodeID3 {
         while (currentPosition < frameSize - 10 && ID3FrameBody[currentPosition] !== 0x00) {
             const bodyFrameHeader = new Buffer(10);
             ID3FrameBody.copy(bodyFrameHeader, 0, currentPosition);
-            const bodyFrameSize = this.getFrameSize(bodyFrameHeader, false);
+            const unsynchronized = !!(bodyFrameHeader[9] & 1 << 1);
+            const bodyFrameSize = this.getFrameSize(bodyFrameHeader, 4, unsynchronized);
             const bodyFrameBuffer = new Buffer(bodyFrameSize);
             ID3FrameBody.copy(bodyFrameBuffer, 0, currentPosition + 10);
                 //  Size of sub frame + its header
@@ -388,6 +392,8 @@ export class NodeID3 {
             frames.push({
                 name: bodyFrameHeader.toString('utf8', 0, 4),
                 body: bodyFrameBuffer,
+                unsynchronized,
+                dataLengthIndicator: unsynchronized,
             });
         }
 
@@ -409,7 +415,7 @@ export class NodeID3 {
                 //  Check if non-text frame is supported
                 Object.keys(this.SFrames).map((key: string) => {
                     if (this.SFrames[key].name === frame.name) {
-                        const decoded = this.SFrames[key].read(frame.body);
+                        const decoded = this.SFrames[key].read(frame.body, frame.unsynchronized, frame.dataLengthIndicator);
                         if (frame.name !== 'TXXX') {
                             tags.raw[frame.name] = decoded;
                             tags[key] = decoded;
@@ -442,17 +448,30 @@ export class NodeID3 {
         }
     }
 
+    public getTagVersion(buffer: Buffer): number {
+        const framePosition = String.prototype.indexOf.call(buffer, (new Buffer('ID3')));
+        if (framePosition === -1 || framePosition > 20) {
+            return -1;
+        } else {
+            return buffer[framePosition + 3];
+        }
+    }
+
     /*
     **  Get size of frame from header
     **  buffer  => Buffer/Array (header)
     **  decode  => Boolean
     */
-    public getFrameSize(buffer: Buffer, decode: boolean): number {
+    public getFrameSize(buffer: Buffer, offset: number, decode: boolean): number {
         if (decode) {
-            return this.decodeSize(new Buffer([buffer[6], buffer[7], buffer[8], buffer[9]]));
+            return this.decodeSize(new Buffer([buffer[offset], buffer[offset + 1], buffer[offset + 2], buffer[offset + 3]]));
         } else {
-            return (new Buffer([buffer[4], buffer[5], buffer[6], buffer[7]])).readUIntBE(0, 4);
+            return (new Buffer([buffer[offset], buffer[offset + 1], buffer[offset + 2], buffer[offset + 3]])).readUIntBE(0, 4);
         }
+    }
+
+    private getTagsSize(buffer: Buffer): number {
+        return this.getFrameSize(buffer, 6, true);
     }
 
     private getTagHeaderSize(data: Buffer): number {
@@ -583,7 +602,7 @@ export class NodeID3 {
         const seperator = new Buffer(1);
         seperator.fill(0);
         if (Array.isArray(textValue)) {
-            textValue.forEach((t, idx) => {
+            textValue.forEach(t => {
                 encoded = Buffer.concat([encoded, iconv.encode(t, 'utf8'), seperator]);
             });
         } else {
@@ -639,42 +658,48 @@ export class NodeID3 {
     /*
     **  data => buffer
     */
-    public readPictureFrame(APICFrame: any) {
+    public readPictureFrame(APICFrame: any, unsynchronized: boolean, dataLengthIndicator: boolean) {
         const picture: any = {};
-        const APICMimeType = APICFrame.toString('ascii').substring(1, APICFrame.indexOf(0x00, 1));
+        const firstByte = dataLengthIndicator ? 5 : 1;  // really byte after encoding byte
+        const APICMimeType = APICFrame.toString('ascii').substring(firstByte, APICFrame.indexOf(0x00, firstByte));
         if (APICMimeType === 'image/jpeg') {
             picture.mime = 'jpeg';
         } else if (APICMimeType === 'image/png') {
             picture.mime = 'png';
         }
         picture.type = {
-            id: APICFrame[APICFrame.indexOf(0x00, 1) + 1],
-            name: APICTypes[APICFrame[APICFrame.indexOf(0x00, 1) + 1]],
+            id: APICFrame[APICFrame.indexOf(0x00, firstByte) + 1],
+            name: APICTypes[APICFrame[APICFrame.indexOf(0x00, firstByte) + 1]],
         };
         let descEnd;
-        if (APICFrame[0] === 0x00) {
-            picture.description = iconv.decode(APICFrame.slice(APICFrame.indexOf(0x00, 1) + 2,
-                    APICFrame.indexOf(0x00, APICFrame.indexOf(0x00, 1) + 2)), 'ISO-8859-1') || undefined;
-            descEnd = APICFrame.indexOf(0x00, APICFrame.indexOf(0x00, 1) + 2);
-        } else if (APICFrame[0] === 0x01) {
-            const desc = APICFrame.slice(APICFrame.indexOf(0x00, 1) + 2);
-            let descFound = 0;
+        if (APICFrame[firstByte - 1] === 0x00) {
+            picture.description = iconv.decode(APICFrame.slice(APICFrame.indexOf(0x00, firstByte) + 2,
+                    APICFrame.indexOf(0x00, APICFrame.indexOf(0x00, firstByte) + 2)), 'ISO-8859-1') || undefined;
+            descEnd = APICFrame.indexOf(0x00, APICFrame.indexOf(0x00, firstByte) + 2);
+        } else if (APICFrame[firstByte - 1] === 0x01) {
+            const descOffset = APICFrame.indexOf(0x00, 1) + 2;
+            const desc = APICFrame.slice(descOffset);
+            const descFound = desc.indexOf('0000', 0, 'hex');
+            descEnd = descOffset + descFound + 2;
 
-            for (let i = 0; i < APICFrame.length - 1; i++) {
-                if (desc[i] === 0x00 && desc[i + 1] === 0x00) {
-                    descFound = i + 1;
-                    descEnd = APICFrame.indexOf(APICFrame.indexOf(0x00, 1) + 2 + i + 1);
-                    break;
-                }
-            }
-            if (descFound) {
-                picture.description = iconv.decode(desc.slice(0, descFound), 'utf16') || undefined;
+            if (descFound !== -1) {
+                picture.description = iconv.decode(desc.slice(0, descFound + 2), 'utf16') || undefined;
             }
         }
         if (descEnd) {
             picture.imageBuffer = APICFrame.slice(descEnd + 1);
         } else {
-            picture.imageBuffer = APICFrame.slice(APICFrame.indexOf(0x00, 1) + 2);
+            picture.imageBuffer = APICFrame.slice(APICFrame.indexOf(0x00, firstByte) + 2);
+        }
+        if (unsynchronized) {
+            const buf = [];
+            for (let i = 0; i < picture.imageBuffer.length; i++) {
+                buf.push(picture.imageBuffer[i]);
+                if (picture.imageBuffer[i] === 255 && picture.imageBuffer[i + 1] === 0) {
+                    i++;
+                }
+            }
+            picture.imageBuffer = new Buffer(buf);
         }
 
         return picture;
