@@ -1,9 +1,13 @@
 # node-id3
 
-node-id3 is a ID3-Tag library written in JavaScript without other dependencies.
+node-id3 is a ID3-Tag library written in JavaScript without other dependencies. It reads both ID3v2.3 and ID3v2.4 tags, and writes ID3v2.4 tags. It supports multi-value fields, and userDefined fields. It attempts to conform to tags written by [foobar2000](https://www.foobar2000.org).
+
+> Note: This project is a rewrite of Zazama's project [node-id3](https://github.com/Zazama/node-id3). It is considered a work-in-progress but will be released shortly after more testing is done.
+> This project will be renamed shortly.
 
 ## Installation
 ```
+# NOTE: this will currently install a different project
 npm install node-id3
 ```
 
