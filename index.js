@@ -336,12 +336,18 @@ class NodeID3 {
             if (frame.name[0] === 'T' && frame.name !== 'TXXX') {
                 //  Decode body
                 let decoded;
-                decoded = iconv.decode(frame.body.slice(1), this.getEncodingName(frame.body)).replace(/\0/g, multiValueSplitter);
+                let separator = new RegExp('\0', 'g');
+                decoded = iconv.decode(frame.body.slice(1), this.getEncodingName(frame.body)).replace(separator, multiValueSplitter);
                 decoded = this.splitMultiValues(decoded);
                 tags.raw[frame.name] = decoded;
                 let found = false;
                 Object.keys(TFrames).map((key) => {
-                    if (TFrames[key] === frame.name) {
+                    if (TFrames[key].key === frame.name) {
+                        if (version === frame_definitions_1.TagVersion.v23 && TFrames[key].multiValueSeparator && typeof decoded === 'string') {
+                            separator = new RegExp(TFrames[key].multiValueSeparator, 'g');
+                            decoded = decoded.replace(separator, multiValueSplitter);
+                            decoded = this.splitMultiValues(decoded);
+                        }
                         tags[key] = decoded;
                         found = true;
                     }
@@ -363,6 +369,10 @@ class NodeID3 {
                             if (!tags.raw[frame.name]) {
                                 tags.raw[frame.name] = {};
                                 tags[key] = {};
+                            }
+                            if (tags[key][decoded.description]) {
+                                // v2.3 convention seems to be multiple TXXX with same description for multiValue
+                                decoded.values = Array.prototype.concat(tags[key][decoded.description], decoded.values);
                             }
                             tags.raw[frame.name][decoded.description] = decoded.values;
                             tags[key][decoded.description] = decoded.values;
