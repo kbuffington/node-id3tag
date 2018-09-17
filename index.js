@@ -859,7 +859,7 @@ class NodeID3 {
         }
         else {
             tags.description = decodedFrame.substring(0, frame.indexOf(0x00, 1)).replace(/\0/g, '');
-            values = decodedFrame.substring(frame.indexOf(0x00, 1) + 1).replace(/\0/g, multiValueSplitter);
+            values = decodedFrame.substring(frame.indexOf(0x00, 1)).replace(/\0/g, multiValueSplitter);
         }
         tags.values = this.splitMultiValues(values);
         return tags;
