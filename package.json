@@ -1,29 +1,30 @@
 {
-    "name": "node-id3",
-    "version": "0.2.0",
+    "name": "node-id3tag",
+    "version": "0.9.0",
     "description": "Pure JavaScript ID3 Tag writer/reader",
-    "author": "Jan Metzger <jan.metzger@gmx.net>",
+    "author": "Kevin Buffington, Jan Metzger <jan.metzger@gmx.net>",
     "main": "index.js",
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/Zazama/node-id3.git"
+        "url": "git+https://github.com/kbuffington/node-id3tag.git"
     },
     "bugs": {
-        "url": "https://github.com/Zazama/node-id3/issues"
+        "url": "https://github.com/kbuffington/node-id3tag/issues"
     },
     "keywords": [
         "id3",
         "mp3",
+        "tagger",
         "tags",
         "music"
     ],
     "licenses": [
         {
             "type": "MIT",
-            "url": "https://github.com/Zazama/node-id3/raw/master/LICENSE"
+            "url": "https://github.com/kbuffington/node-id3tag/raw/master/LICENSE"
         }
     ],
-    "homepage": "https://github.com/Zazama/node-id3#readme",
+    "homepage": "https://github.com/kbuffington/node-id3tag#readme",
     "directories": {
         "example": "example"
     },

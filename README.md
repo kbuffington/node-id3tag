@@ -1,20 +1,18 @@
-# node-id3
+# node-id3tag
 
-node-id3 is a ID3-Tag library written in JavaScript without other dependencies. It reads both ID3v2.3 and ID3v2.4 tags, and writes ID3v2.4 tags. It supports multi-value fields, and userDefined fields. It attempts to conform to tags written by [foobar2000](https://www.foobar2000.org).
+node-id3tag is a ID3-Tag library written in JavaScript without other dependencies. It reads both ID3v2.3 and ID3v2.4 tags, and writes ID3v2.4 tags. It supports multi-value fields, and userDefined TXXX fields. It attempts to conform to tags written by [foobar2000](https://www.foobar2000.org).
 
-> Note: This project is a rewrite of Zazama's project [node-id3](https://github.com/Zazama/node-id3). It is considered a work-in-progress but will be released shortly after more testing is done.
-> This project will be renamed shortly.
+> Note: This project was originally forked from Zazama's project [node-id3](https://github.com/Zazama/node-id3), and heavily modified to add read/write support for ID3v2.4. The underlying API is essentially unchanged.
 
 ## Installation
 ```
-# NOTE: this will currently install a different project
-npm install node-id3
+npm install node-id3tag
 ```
 
 ## Usage
 
 ```javascript
-const NodeID3 = require('node-id3')
+const NodeID3tag = require('node-id3tag')
 
 /* Variables found in the following usage examples */
 
@@ -38,24 +36,24 @@ let tags = {
 
 //  Create a ID3-Frame buffer from passed tags
 //  Synchronous
-let ID3FrameBuffer = NodeID3.create(tags)   //  Returns ID3-Frame buffer
+let ID3FrameBuffer = NodeID3tag.create(tags)   //  Returns ID3-Frame buffer
 //  Asynchronous
-NodeID3.create(tags, function(frame) {  })
+NodeID3tag.create(tags, function(frame) {  })
 
 //  Write ID3-Frame into (.mp3) file
-let success = NodeID3.write(tags, file) //  Returns true/false or, if buffer passed as file, the tagged buffer
-NodeID3.write(tags, file, function(err, buffer) {  }) //  Buffer is only returned if a buffer was passed as file
+let success = NodeID3tag.write(tags, file) //  Returns true/false or, if buffer passed as file, the tagged buffer
+NodeID3tag.write(tags, file, function(err, buffer) {  }) //  Buffer is only returned if a buffer was passed as file
 
 //  Update existing ID3-Frame with new/edited tags
-let success = NodeID3.update(tags, file) //  Returns true/false or, if buffer passed as file, the tagged buffer
-NodeID3.update(tags, file, function(err, buffer) {  })  //  Buffer is only returned if a buffer was passed as file
+let success = NodeID3tag.update(tags, file) //  Returns true/false or, if buffer passed as file, the tagged buffer
+NodeID3tag.update(tags, file, function(err, buffer) {  })  //  Buffer is only returned if a buffer was passed as file
 ```
 
 ### Reading ID3-Tags
 
 ```javascript
-let tags = NodeID3.read(file)
-NodeID3.read(file, function(err, tags) {
+let tags = NodeID3tag.read(file)
+NodeID3tag.read(file, function(err, tags) {
   /*
   tags: {
     title: "Tomorrow",
@@ -82,10 +80,10 @@ NodeID3.read(file, function(err, tags) {
 ### Removing ID3-Tags from file/buffer
 
 ```javascript
-let success = NodeID3.removeTags(filepath)  //  returns true/false
-NodeID3.removeTags(filepath, function(err) {  })
+let success = NodeID3tag.removeTags(filepath)  //  returns true/false
+NodeID3tag.removeTags(filepath, function(err) {  })
 
-let bufferWithoutID3Frame = NodeID3.removeTagsFromBuffer(filebuffer)  //  Returns Buffer
+let bufferWithoutID3Frame = NodeID3tag.removeTagsFromBuffer(filebuffer)  //  Returns Buffer
 ```
 
 ## Supported aliases
