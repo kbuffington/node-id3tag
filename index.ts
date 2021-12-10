@@ -58,7 +58,7 @@ export class NodeID3 {
     **  create  => function to create the frame
     **  read    => function to read the frame
     */
-    private SFrames: any = {
+    private SpecialFrames: any = {
         comment: {
             name: 'COMM',
             create: NodeID3.prototype.createCommentFrame.bind(this),
@@ -192,16 +192,16 @@ export class NodeID3 {
             //  Check if passed tag is text frame (Alias or ID)
             let frame;
             if (TFrames[tag] || Object.keys(TFrames).map(i => TFrames[i]).indexOf(tag) !== -1) {
-                const specName = TFrames[tag] || tag;
+                const specName = TFrames[tag].key || tag;
                 frame = this.createTextFrame(specName, tags[tag]);
-            } else if (this.SFrames[tag]) { //  Check if Alias of special frame
-                const createFrameFunction = this.SFrames[tag].create;
+            } else if (this.SpecialFrames[tag]) { //  Check if Alias of special frame
+                const createFrameFunction = this.SpecialFrames[tag].create;
                 frame = createFrameFunction(tags[tag]);
             } else {
-                const idx = Object.keys(this.SFrames).map(i => this.SFrames[i].name).indexOf(tag);
+                const idx = Object.keys(this.SpecialFrames).map(i => this.SpecialFrames[i].name).indexOf(tag);
                 if (idx !== -1) {   //  if frameID of special frame
                     //  get create function from special frames where tag ID is found at this.SFrames[index].name
-                    const createFrameFunction = this.SFrames[Object.keys(this.SFrames)[idx]].create;
+                    const createFrameFunction = this.SpecialFrames[Object.keys(this.SpecialFrames)[idx]].create;
                     frame = createFrameFunction(tags[tag]);
                     if (Array.isArray(frame)) {
                         frame.forEach(f => frames.push(f));
@@ -212,6 +212,8 @@ export class NodeID3 {
 
             if (frame instanceof Buffer) {
                 frames.push(frame);
+            } else if (Array.isArray(frame) && frame.length > 0 && frame[0] instanceof Buffer) {
+                frames.push(...frame);
             }
         });
 
@@ -280,15 +282,15 @@ export class NodeID3 {
                 rawTags[TFrames[tagKey]] = tags[tagKey];
 
                 //  if js name passed (SF)
-            } else if (this.SFrames[tagKey]) {
-                rawTags[this.SFrames[tagKey].name] = tags[tagKey];
+            } else if (this.SpecialFrames[tagKey]) {
+                rawTags[this.SpecialFrames[tagKey].name] = tags[tagKey];
 
                 //  if raw name passed (TF)
             } else if (Object.keys(TFrames).map(i => TFrames[i]).indexOf(tagKey) !== -1) {
                 rawTags[tagKey] = tags[tagKey];
 
                 //  if raw name passed (SF)
-            } else if (Object.keys(this.SFrames).map(i => this.SFrames[i]).map(x => x.name).indexOf(tagKey) !== -1) {
+            } else if (Object.keys(this.SpecialFrames).map(i => this.SpecialFrames[i]).map(x => x.name).indexOf(tagKey) !== -1) {
                 rawTags[tagKey] = tags[tagKey];
             }
         });
@@ -386,9 +388,9 @@ export class NodeID3 {
                 }
             } else {
                 //  Check if non-text frame is supported
-                Object.keys(this.SFrames).map((key: string) => {
-                    if (this.SFrames[key].name === frame.name) {
-                        const decoded = this.SFrames[key].read(frame.body, frame.unsynchronized, frame.dataLengthIndicator);
+                Object.keys(this.SpecialFrames).map((key: string) => {
+                    if (this.SpecialFrames[key].name === frame.name) {
+                        const decoded = this.SpecialFrames[key].read(frame.body, frame.unsynchronized, frame.dataLengthIndicator);
                         if (frame.name !== 'TXXX') {
                             tags.raw[frame.name] = decoded;
                             tags[key] = decoded;
