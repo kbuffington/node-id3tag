@@ -349,6 +349,9 @@ export class NodeID3 {
             ID3FrameBody.copy(bodyFrameHeader, 0, currentPosition);
             const unsynchronized = !!(bodyFrameHeader[9] & 1 << 1);
             const bodyFrameSize = this.getFrameSize(bodyFrameHeader, 4, unsynchronized);
+            if (bodyFrameSize > (frameSize - currentPosition)) {
+                break;
+            }
             const bodyFrameBuffer = Buffer.alloc(bodyFrameSize);
             ID3FrameBody.copy(bodyFrameBuffer, 0, currentPosition + 10);
                 //  Size of sub frame + its header
