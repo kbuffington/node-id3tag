@@ -181,7 +181,7 @@ export class NodeID3 {
 
     public create(tags: any, fn?: Function) {
         const frames: any[] = [];
-        const TFrames = this.getVersionedFrameDefinitions(TagVersion.v24);
+        const TextFrames = this.getVersionedFrameDefinitions(TagVersion.v24);
 
         //  Push a header for the ID3-Frame
         frames.push(this.createTagHeader());
@@ -191,8 +191,8 @@ export class NodeID3 {
         tagNames.forEach((tag: string) => {
             //  Check if passed tag is text frame (Alias or ID)
             let frame;
-            if (TFrames[tag] || Object.keys(TFrames).map(i => TFrames[i]).indexOf(tag) !== -1) {
-                const specName = TFrames[tag].key || tag;
+            if (TextFrames[tag] || Object.keys(TextFrames).map(i => TextFrames[i]).indexOf(tag) !== -1) {
+                const specName = TextFrames[tag].key || tag;
                 frame = this.createTextFrame(specName, tags[tag]);
             } else if (this.SpecialFrames[tag]) { //  Check if Alias of special frame
                 const createFrameFunction = this.SpecialFrames[tag].create;

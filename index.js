@@ -160,15 +160,15 @@ class NodeID3 {
     }
     create(tags, fn) {
         const frames = [];
-        const TFrames = this.getVersionedFrameDefinitions(frame_definitions_1.TagVersion.v24);
+        const TextFrames = this.getVersionedFrameDefinitions(frame_definitions_1.TagVersion.v24);
         //  Push a header for the ID3-Frame
         frames.push(this.createTagHeader());
         const tagNames = Object.keys(tags);
         tagNames.forEach((tag) => {
             //  Check if passed tag is text frame (Alias or ID)
             let frame;
-            if (TFrames[tag] || Object.keys(TFrames).map(i => TFrames[i]).indexOf(tag) !== -1) {
-                const specName = TFrames[tag].key || tag;
+            if (TextFrames[tag] || Object.keys(TextFrames).map(i => TextFrames[i]).indexOf(tag) !== -1) {
+                const specName = TextFrames[tag].key || tag;
                 frame = this.createTextFrame(specName, tags[tag]);
             }
             else if (this.SpecialFrames[tag]) { //  Check if Alias of special frame
