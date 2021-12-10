@@ -61,23 +61,28 @@ export class NodeID3 {
     private SpecialFrames: any = {
         comment: {
             name: 'COMM',
-            create: NodeID3.prototype.createCommentFrame.bind(this),
-            read: NodeID3.prototype.readCommentFrame.bind(this),
+            create: this.createCommentFrame.bind(this),
+            read: this.readCommentFrame.bind(this),
         },
         image: {
             name: 'APIC',
-            create: NodeID3.prototype.createPictureFrame.bind(this),
-            read: NodeID3.prototype.readPictureFrame.bind(this),
+            create: this.createPictureFrame.bind(this),
+            read: this.readPictureFrame.bind(this),
         },
         unsynchronisedLyrics: {
             name: 'USLT',
-            create: NodeID3.prototype.createUnsynchronisedLyricsFrame.bind(this),
-            read: NodeID3.prototype.readUnsynchronisedLyricsFrame.bind(this),
+            create: this.createUnsynchronisedLyricsFrame.bind(this),
+            read: this.readUnsynchronisedLyricsFrame.bind(this),
         },
         userDefined: {
             name: 'TXXX',
-            create: NodeID3.prototype.createUserDefinedFrame.bind(this),
-            read: NodeID3.prototype.readUserDefinedFrame.bind(this),
+            create: this.createUserDefinedFrames.bind(this),
+            read: this.readUserDefinedFrame.bind(this),
+        },
+        popularimeter: {
+            name: 'POPM',
+            create: this.createPopularimeterFrame.bind(this),
+            read: this.readPopularimeterFrame.bind(this),
         },
     };
 
@@ -953,13 +958,75 @@ export class NodeID3 {
      *
      * @param userProps object containing key/value properties, each will get it's own TXXX frame
      */
-    public createUserDefinedFrame(userProps: any): Buffer[] {
+    public createUserDefinedFrames(userProps: any): Buffer[] {
         const frames: Buffer[] = [];
         Object.keys(userProps).forEach(desc => {
             // TXXX frame is identical to a multi-value frame just that the first value is the description
             frames.push(this.createTextFrame('TXXX', Array.prototype.concat(desc, userProps[desc])) as Buffer);
         });
         return frames;
+    }
+
+    /*
+    **  popularimeter => object {
+    **      email:    string,
+    **      rating:   int
+    **      counter:  int
+    **  }
+    **/
+    public createPopularimeterFrame(popularimeter: any) {
+        popularimeter = popularimeter || {};
+        const email = popularimeter.email;
+        let rating = Math.trunc(popularimeter.rating);
+        let counter = Math.trunc(popularimeter.counter);
+        if (!email) {
+            return null;
+        }
+        if (isNaN(rating) || rating < 0 || rating > 255) {
+            rating = 0;
+        }
+        if (isNaN(counter) || counter < 0) {
+            counter = 0;
+        }
+
+        // Create frame header
+        const buffer = Buffer.alloc(10, 0);
+        buffer.write('POPM', 0);                 //  Write header ID
+
+        let emailBuffer = this.createText(email, 0x01, false);
+        emailBuffer = Buffer.from(email + '\0', 'utf8');
+        const ratingBuffer = Buffer.alloc(1, rating);
+        const counterBuffer = Buffer.alloc(4, 0);
+        counterBuffer.writeUInt32BE(counter, 0);
+
+        buffer.writeUInt32BE(emailBuffer.length + ratingBuffer.length + counterBuffer.length, 4);
+        const frame = Buffer.concat([buffer, emailBuffer, ratingBuffer, counterBuffer]);
+        return frame;
+    }
+
+    /*
+    **  frame   => Buffer
+    */
+    public readPopularimeterFrame(frame: Buffer) {
+        const tags: any = {};
+
+        if (!frame) {
+            return tags;
+        }
+        const endEmailIndex = frame.indexOf(0x00, 1);
+        if (endEmailIndex > -1) {
+            tags.email = iconv.decode(frame.slice(0, endEmailIndex), 'ISO-8859-1');
+            const ratingIndex = endEmailIndex + 1;
+            if (ratingIndex < frame.length) {
+                tags.rating = frame[ratingIndex];
+                const counterIndex = ratingIndex + 1;
+                if (counterIndex < frame.length) {
+                    const value = frame.slice(counterIndex, frame.length);
+                    tags.counter = value.readUInt32BE(0);
+                }
+            }
+        }
+        return tags;
     }
 }
 
