@@ -1022,7 +1022,9 @@ export class NodeID3 {
                 const counterIndex = ratingIndex + 1;
                 if (counterIndex < frame.length) {
                     const value = frame.slice(counterIndex, frame.length);
-                    tags.counter = value.readUInt32BE(0);
+                    if (value.length >= 4) {
+                        tags.counter = value.readUInt32BE(0);
+                    }
                 }
             }
         }
