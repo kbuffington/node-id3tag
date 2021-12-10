@@ -80,8 +80,8 @@ class NodeID3 {
     **  fn          => Function (for asynchronous usage)
     */
     write(tags, filebuffer, fn) {
-        const completeTag = this.create(tags) || new Buffer(0);
-        const header = new Buffer(25);
+        const completeTag = this.create(tags) || Buffer.alloc(0);
+        const header = Buffer.alloc(25);
         if (filebuffer instanceof Buffer) {
             filebuffer = this.removeTagsFromBuffer(filebuffer) || filebuffer;
             const completeBuffer = Buffer.concat([completeTag, filebuffer]);
@@ -145,7 +145,7 @@ class NodeID3 {
         }
     }
     getPaddingBuffer(size) {
-        const padding = new Buffer(size);
+        const padding = Buffer.alloc(size);
         padding.fill(0);
         return padding;
     }
@@ -303,14 +303,14 @@ class NodeID3 {
         if (framePosition === -1) {
             return false;
         }
-        const tempBuffer = new Buffer(filebuffer.toString('hex', framePosition, framePosition + 10), 'hex');
+        const tempBuffer = Buffer.from(filebuffer.toString('hex', framePosition, framePosition + 10), 'hex');
         const version = this.getTagVersion(tempBuffer);
         if (version === frame_definitions_1.TagVersion.unknown) {
             return false; // bad tag
         }
         const TFrames = this.getVersionedFrameDefinitions(version);
         const frameSize = this.getTagsSize(tempBuffer) + 10;
-        const ID3FrameBody = new Buffer(frameSize - 10 + 1);
+        const ID3FrameBody = Buffer.alloc(frameSize - 10 + 1);
         filebuffer.copy(ID3FrameBody, 0, framePosition + 10);
         //  Now, get frame for frame by given size to support unkown tags etc.
         const frames = [];
@@ -319,11 +319,11 @@ class NodeID3 {
         };
         let currentPosition = 0;
         while (currentPosition < frameSize - 10 && ID3FrameBody[currentPosition] !== 0x00) {
-            const bodyFrameHeader = new Buffer(10);
+            const bodyFrameHeader = Buffer.alloc(10);
             ID3FrameBody.copy(bodyFrameHeader, 0, currentPosition);
             const unsynchronized = !!(bodyFrameHeader[9] & 1 << 1);
             const bodyFrameSize = this.getFrameSize(bodyFrameHeader, 4, unsynchronized);
-            const bodyFrameBuffer = new Buffer(bodyFrameSize);
+            const bodyFrameBuffer = Buffer.alloc(bodyFrameSize);
             ID3FrameBody.copy(bodyFrameBuffer, 0, currentPosition + 10);
             //  Size of sub frame + its header
             currentPosition += bodyFrameSize + 10;
@@ -391,7 +391,7 @@ class NodeID3 {
     **  buffer  => Buffer
     */
     getFramePosition(buffer) {
-        const framePosition = String.prototype.indexOf.call(buffer, (new Buffer('ID3')));
+        const framePosition = String.prototype.indexOf.call(buffer, 'ID3');
         if (framePosition === -1 || framePosition > 20) {
             return -1;
         }
@@ -400,7 +400,7 @@ class NodeID3 {
         }
     }
     getTagVersion(buffer) {
-        const framePosition = String.prototype.indexOf.call(buffer, (new Buffer('ID3')));
+        const framePosition = String.prototype.indexOf.call(buffer, 'ID3');
         if (framePosition === -1 || framePosition > 20) {
             return frame_definitions_1.TagVersion.unknown;
         }
@@ -423,10 +423,10 @@ class NodeID3 {
     */
     getFrameSize(buffer, offset, decode) {
         if (decode) {
-            return this.decodeSize(new Buffer([buffer[offset], buffer[offset + 1], buffer[offset + 2], buffer[offset + 3]]));
+            return this.decodeSize(Buffer.from([buffer[offset], buffer[offset + 1], buffer[offset + 2], buffer[offset + 3]]));
         }
         else {
-            return (new Buffer([buffer[offset], buffer[offset + 1], buffer[offset + 2], buffer[offset + 3]])).readUIntBE(0, 4);
+            return (Buffer.from([buffer[offset], buffer[offset + 1], buffer[offset + 2], buffer[offset + 3]])).readUIntBE(0, 4);
         }
     }
     getTagsSize(buffer) {
@@ -434,7 +434,12 @@ class NodeID3 {
     }
     getTagHeaderSize(data) {
         const framePosition = this.getFramePosition(data);
-        const hSize = new Buffer([data[framePosition + 6], data[framePosition + 7], data[framePosition + 8], data[framePosition + 9]]);
+        const hSize = Buffer.from([
+            data[framePosition + 6],
+            data[framePosition + 7],
+            data[framePosition + 8],
+            data[framePosition + 9],
+        ]);
         if ((hSize[0] | hSize[1] | hSize[2] | hSize[3]) & 0x80) {
             //  Invalid tag size (msb not 0)
             return -1;
@@ -524,7 +529,7 @@ class NodeID3 {
     **  Create header for ID3-Frame v2.4.0
     */
     createTagHeader() {
-        const header = new Buffer(10);
+        const header = Buffer.alloc(10);
         header.fill(0);
         header.write('ID3', 0); // File identifier
         header.writeUInt16BE(0x0400, 3); // Version 2.4.0  --  04 00
@@ -539,11 +544,11 @@ class NodeID3 {
     ** textValue =>  string or array of strings (body)
     */
     createTextFrame(frameId, textValue) {
-        let encoded = new Buffer(0);
+        let encoded = Buffer.alloc(0);
         if (!frameId || !textValue) {
             return null;
         }
-        const seperator = new Buffer(1);
+        const seperator = Buffer.alloc(1);
         seperator.fill(0);
         if (Array.isArray(textValue)) {
             textValue.forEach(t => {
@@ -554,13 +559,13 @@ class NodeID3 {
             encoded = iconv.encode(textValue, 'utf8');
             encoded = Buffer.concat([encoded, seperator]);
         }
-        const buffer = new Buffer(10);
+        const buffer = Buffer.alloc(10);
         buffer.fill(0);
         buffer.write(frameId, 0); //  ID of the specified frame
         buffer.writeUInt32BE(encoded.length + 1, 4); //  Size of frame (string length + encoding byte)
-        const encBuffer = new Buffer(1); //  Encoding (now using UTF-8)
+        const encBuffer = Buffer.alloc(1); //  Encoding (now using UTF-8)
         encBuffer.fill(this.getEncodingByte('utf8'));
-        // const contentBuffer = new Buffer(encoded.toString(), 'binary'); //  Text -> Binary encoding for UTF-16 w/ BOM
+        // const contentBuffer = Buffer.alloc(encoded.toString(), 'binary'); //  Text -> Binary encoding for UTF-16 w/ BOM
         return Buffer.concat([buffer, encBuffer, encoded]);
     }
     /*
@@ -572,16 +577,16 @@ class NodeID3 {
                 data = data.imageBuffer;
             }
             const apicData = (data instanceof Buffer === true)
-                ? new Buffer(data)
-                : new Buffer(fs.readFileSync(data, 'binary'), 'binary');
-            const bHeader = new Buffer(10);
+                ? Buffer.from(data)
+                : Buffer.from(fs.readFileSync(data, 'binary'), 'binary');
+            const bHeader = Buffer.alloc(10);
             bHeader.fill(0);
             bHeader.write('APIC', 0);
             let mimeType = 'image/png';
             if (apicData[0] === 0xff && apicData[1] === 0xd8 && apicData[2] === 0xff) {
                 mimeType = 'image/jpeg';
             }
-            const bContent = new Buffer(mimeType.length + 4);
+            const bContent = Buffer.alloc(mimeType.length + 4);
             bContent.fill(0);
             bContent[mimeType.length + 2] = 0x03; //  Front cover
             bContent.write(mimeType, 1);
@@ -637,7 +642,7 @@ class NodeID3 {
                     i++;
                 }
             }
-            picture.imageBuffer = new Buffer(buf);
+            picture.imageBuffer = Buffer.from(buf);
         }
         return picture;
     }
@@ -678,7 +683,7 @@ class NodeID3 {
         }
     }
     createTextEncoding(encoding) {
-        const buffer = new Buffer(1);
+        const buffer = Buffer.alloc(1);
         buffer[0] = encoding; // this.getEncodingByte(encoding)
         return buffer;
     }
@@ -689,11 +694,11 @@ class NodeID3 {
         else if (language.length > 3) {
             language = language.substring(0, 3);
         }
-        return (new Buffer(language));
+        return Buffer.from(language);
     }
     createContentDescriptor(description, encoding, terminated) {
         if (!description) {
-            description = terminated ? iconv.encode('\0', this.getEncodingName(encoding)) : new Buffer(0);
+            description = terminated ? iconv.encode('\0', this.getEncodingName(encoding)) : Buffer.alloc(0);
             return description;
         }
         if (typeof description === 'string') {
@@ -703,7 +708,7 @@ class NodeID3 {
             description = iconv.encode(description.toString(), this.getEncodingName(encoding));
         }
         return terminated
-            ? Buffer.concat([description, (new Buffer(this.getTerminationCount(encoding))).fill(0x00)])
+            ? Buffer.concat([description, Buffer.alloc(this.getTerminationCount(encoding)).fill(0x00)])
             : description;
     }
     createText(text, encoding, terminated) {
@@ -712,7 +717,7 @@ class NodeID3 {
         }
         const textBuffer = iconv.encode(text, this.getEncodingName(encoding));
         return terminated
-            ? Buffer.concat([textBuffer, (new Buffer(this.getTerminationCount(encoding))).fill(0x00)])
+            ? Buffer.concat([textBuffer, Buffer.alloc(this.getTerminationCount(encoding)).fill(0x00)])
             : textBuffer;
     }
     /*
@@ -728,7 +733,7 @@ class NodeID3 {
             return null;
         }
         // Create frame header
-        const buffer = new Buffer(10);
+        const buffer = Buffer.alloc(10);
         buffer.fill(0);
         buffer.write('COMM', 0); //  Write header ID
         const encodingBuffer = this.createTextEncoding(0x01);
@@ -791,7 +796,7 @@ class NodeID3 {
             return null;
         }
         // Create frame header
-        const buffer = new Buffer(10);
+        const buffer = Buffer.alloc(10);
         buffer.fill(0);
         buffer.write('USLT', 0); //  Write header ID
         const encodingBuffer = this.createTextEncoding(0x01);
@@ -855,7 +860,7 @@ class NodeID3 {
         const decodedFrame = iconv.decode(frame.slice(1), this.getEncodingName(frame));
         let values;
         if (this.getEncodingName(frame) === 'utf16' || this.getEncodingName(frame) === 'UTF-16BE') {
-            const nullBuffer = new Buffer([0x00, 0x00]);
+            const nullBuffer = Buffer.from([0x00, 0x00]);
             const descriptionEnd = frame.indexOf(nullBuffer, 1) / 2;
             tags.description = decodedFrame.substring(0, descriptionEnd).replace(/\0/g, '');
             values = decodedFrame.substring(descriptionEnd + 1).replace(/\0/g, multiValueSplitter);
