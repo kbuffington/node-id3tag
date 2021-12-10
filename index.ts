@@ -419,7 +419,7 @@ export class NodeID3 {
     **  buffer  => Buffer
     */
     public getFramePosition(buffer: Buffer) {
-        const framePosition = String.prototype.indexOf.call(buffer, 'ID3');
+        const framePosition = buffer.indexOf('ID3');
         if (framePosition === -1 || framePosition > 20) {
             return -1;
         } else {
@@ -428,7 +428,7 @@ export class NodeID3 {
     }
 
     public getTagVersion(buffer: Buffer): string {
-        const framePosition = String.prototype.indexOf.call(buffer, 'ID3');
+        const framePosition = buffer.indexOf('ID3');
         if (framePosition === -1 || framePosition > 20) {
             return TagVersion.unknown;
         } else {
