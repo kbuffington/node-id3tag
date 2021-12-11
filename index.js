@@ -767,15 +767,7 @@ class NodeID3 {
             ? Buffer.concat([textBuffer, Buffer.alloc(this.getTerminationCount(encoding)).fill(0x00)])
             : textBuffer;
     }
-    /*
-    **  comment => object {
-    **      language:   string (3 characters),
-    **      text:       string
-    **      shortText:  string
-    **  }
-    **/
     createCommentFrame(comment) {
-        comment = comment || { language: '', shortText: '', text: '' };
         if (!comment.text) {
             return null;
         }
@@ -783,10 +775,11 @@ class NodeID3 {
         const buffer = Buffer.alloc(10);
         buffer.fill(0);
         buffer.write('COMM', 0); //  Write header ID
-        const encodingBuffer = this.createTextEncoding(0x01);
+        const encoding = this.getEncodingByte('utf8');
+        const encodingBuffer = this.createTextEncoding(encoding);
         const languageBuffer = this.createLanguage(comment.language);
-        const descriptorBuffer = this.createContentDescriptor(comment.shortText, 0x01, true);
-        const textBuffer = this.createText(comment.text, 0x01, false);
+        const descriptorBuffer = this.createContentDescriptor(comment.shortText, encoding, true);
+        const textBuffer = this.createText(comment.text, encoding, false);
         buffer.writeUInt32BE(encodingBuffer.length + languageBuffer.length + descriptorBuffer.length + textBuffer.length, 4);
         return Buffer.concat([buffer, encodingBuffer, languageBuffer, descriptorBuffer, textBuffer]);
     }
@@ -798,14 +791,16 @@ class NodeID3 {
         if (!frame) {
             return tags;
         }
-        if (frame[0] === 0x00) {
+        const encoding = this.getEncodingName(frame[0]);
+        if (encoding === 'ISO-8859-1' || encoding === 'utf8') {
             tags = {
-                language: iconv.decode(frame, 'ISO-8859-1').substring(1, 4).replace(/\0/g, ''),
-                shortText: iconv.decode(frame, 'ISO-8859-1').substring(4, frame.indexOf(0x00, 1)).replace(/\0/g, ''),
-                text: iconv.decode(frame, 'ISO-8859-1').substring(frame.indexOf(0x00, 1) + 1).replace(/\0/g, ''),
+                language: iconv.decode(frame, encoding).substring(1, 4).replace(/\0/g, ''),
+                shortText: iconv.decode(frame, encoding).substring(4, frame.indexOf(0x00, 1)).replace(/\0/g, ''),
+                text: iconv.decode(frame, encoding).substring(frame.indexOf(0x00, 1) + 1).replace(/\0/g, ''),
             };
         }
-        else if (frame[0] === 0x01) {
+        else if (encoding === 'utf16' || encoding === 'UTF-16BE') {
+            // TODO: Test UTF-16BE!
             let descriptorEscape = 0;
             while (frame[descriptorEscape] !== undefined && frame[descriptorEscape] !== 0x00 ||
                 frame[descriptorEscape + 1] !== 0x00 || frame[descriptorEscape + 2] === 0x00) {
@@ -818,8 +813,8 @@ class NodeID3 {
             const text = frame.slice(descriptorEscape + 2);
             tags = {
                 language: frame.toString().substring(1, 4).replace(/\0/g, ''),
-                shortText: iconv.decode(shortText, 'utf16').replace(/\0/g, ''),
-                text: iconv.decode(text, 'utf16').replace(/\0/g, ''),
+                shortText: iconv.decode(shortText, encoding).replace(/\0/g, ''),
+                text: iconv.decode(text, encoding).replace(/\0/g, ''),
             };
         }
         return tags;

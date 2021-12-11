@@ -5,6 +5,19 @@ export enum TagVersion {
     unknown = 'unknown',
 }
 
+export interface Comment {
+    language: string;
+    shortText: string;
+    text: string;
+}
+
+export interface Frame {
+    name: string;
+    body: Buffer;
+    unsynchronized: boolean;
+    dataLengthIndicator: boolean;
+}
+
 export class Chapter {
     public elementID?: string;
     public startTimeMs?: number;
