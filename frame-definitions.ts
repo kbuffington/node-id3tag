@@ -1,8 +1,3 @@
-export enum TagVersion {
-    v23 = 'ID3v2.3',
-    v24 = 'ID3v2.4',
-    unknown = 'unknown',
-}
 
 /*
  **  List of official text information frames
