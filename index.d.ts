@@ -288,7 +288,10 @@ declare module "node-id3" {
                 elementID: string,
                 endTimeMs: number,
                 startTimeMs: number,
-                tags?: Tags
+                tags?: {
+                   image?: Tags["image"],
+                   title?: string,
+                },
             }>,
             tableOfContents?: Array<{
                 elementID: string,

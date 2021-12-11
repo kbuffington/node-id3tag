@@ -1111,7 +1111,7 @@ export class NodeID3 {
         return tags;
     }
 
-    public createChapterFrame(chapter: Chapter) {
+    public createChapterFrame(chapter: Chapter | Chapter[]) {
         if (chapter instanceof Array && chapter.length > 0) {
             const frames: any[] = [];
             chapter.forEach((tag, index) => {
@@ -1122,7 +1122,7 @@ export class NodeID3 {
             });
             return frames.length ? Buffer.concat(frames) : null;
         } else {
-            return this.createChapterFrameHelper(chapter, 1);
+            return this.createChapterFrameHelper(chapter as Chapter, 1);
         }
     }
 
