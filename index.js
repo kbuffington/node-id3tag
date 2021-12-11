@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const fs = require("fs");
 const iconv = require("iconv-lite");
+const frame_classes_1 = require("./frame-classes");
 const frame_definitions_1 = require("./frame-definitions");
 /*
  **  Used specification: http://id3.org/id3v2.3.0
@@ -68,10 +69,16 @@ class NodeID3 {
                 create: this.createPopularimeterFrame.bind(this),
                 read: this.readPopularimeterFrame.bind(this),
             },
+            chapter: {
+                name: 'CHAP',
+                create: this.createChapterFrame.bind(this),
+                read: this.readChapterFrame.bind(this),
+                multiple: true,
+            },
         };
     }
     getVersionedFrameDefinitions(version) {
-        if (version === frame_definitions_1.TagVersion.v23) {
+        if (version === frame_classes_1.TagVersion.v23) {
             return frame_definitions_1.ID3v23Frames;
         }
         else {
@@ -164,10 +171,28 @@ class NodeID3 {
         tag.writeUInt8(encodedSize[3], 9);
     }
     create(tags, fn) {
-        const frames = [];
-        const TextFrames = this.getVersionedFrameDefinitions(frame_definitions_1.TagVersion.v24);
+        let frames = [];
         //  Push a header for the ID3-Frame
         frames.push(this.createTagHeader());
+        frames = frames.concat(this.createBuffersFromTags(tags));
+        //  Calculate frame size of ID3 body to insert into header
+        let totalSize = 0;
+        frames.forEach((frame) => {
+            totalSize += frame.length;
+        });
+        //  Don't count ID3 header itself
+        totalSize -= 10;
+        this.writeTagHeaderSize(totalSize, frames[0]);
+        if (fn && typeof fn === 'function') {
+            fn(Buffer.concat(frames));
+        }
+        else {
+            return Buffer.concat(frames);
+        }
+    }
+    createBuffersFromTags(tags) {
+        const frames = [];
+        const TextFrames = this.getVersionedFrameDefinitions(frame_classes_1.TagVersion.v24);
         const tagNames = Object.keys(tags);
         tagNames.forEach((tag) => {
             //  Check if passed tag is text frame (Alias or ID)
@@ -199,20 +224,7 @@ class NodeID3 {
                 frames.push(...frame);
             }
         });
-        //  Calculate frame size of ID3 body to insert into header
-        let totalSize = 0;
-        frames.forEach((frame) => {
-            totalSize += frame.length;
-        });
-        //  Don't count ID3 header itself
-        totalSize -= 10;
-        this.writeTagHeaderSize(totalSize, frames[0]);
-        if (fn && typeof fn === 'function') {
-            fn(Buffer.concat(frames));
-        }
-        else {
-            return Buffer.concat(frames);
-        }
+        return frames;
     }
     /*
     **  Read ID3-Tags from passed buffer/filepath
@@ -255,7 +267,7 @@ class NodeID3 {
     */
     update(tags, filebuffer, fn) {
         const rawTags = {};
-        const TFrames = this.getVersionedFrameDefinitions(frame_definitions_1.TagVersion.v24); // TODO: this seems bad to assume
+        const TFrames = this.getVersionedFrameDefinitions(frame_classes_1.TagVersion.v24); // TODO: this seems bad to assume
         Object.keys(tags).map(tagKey => {
             //  if js name passed (TF)
             if (TFrames[tagKey]) {
@@ -301,7 +313,6 @@ class NodeID3 {
     /*
     **  Read ID3-Tags from passed buffer
     **  filebuffer  => Buffer
-    **  options     => Object
     */
     getTagsFromBuffer(filebuffer) {
         const framePosition = this.getFramePosition(filebuffer);
@@ -309,39 +320,67 @@ class NodeID3 {
             return false;
         }
         const tempBuffer = Buffer.from(filebuffer.toString('hex', framePosition, framePosition + 10), 'hex');
-        const version = this.getTagVersion(tempBuffer);
-        if (version === frame_definitions_1.TagVersion.unknown) {
+        const id3Version = this.getTagVersion(tempBuffer);
+        if (id3Version === frame_classes_1.TagVersion.unknown) {
             return false; // bad tag
         }
-        const TFrames = this.getVersionedFrameDefinitions(version);
         const frameSize = this.getTagsSize(tempBuffer) + 10;
         const ID3FrameBody = Buffer.alloc(frameSize - 10 + 1);
         filebuffer.copy(ID3FrameBody, 0, framePosition + 10);
-        //  Now, get frame for frame by given size to support unkown tags etc.
+        const frames = this.getFramesFromID3Body(ID3FrameBody, id3Version);
+        return this.getTagsFromFrames(frames, id3Version);
+    }
+    getFramesFromID3Body(ID3FrameBody, id3Version) {
         const frames = [];
-        const tags = {
-            raw: {},
-        };
         let currentPosition = 0;
-        while (currentPosition < frameSize - 10 && ID3FrameBody[currentPosition] !== 0x00) {
-            const bodyFrameHeader = Buffer.alloc(10);
+        const textframeHeaderSize = this.getTextFrameHeaderSize(id3Version);
+        const identifierSize = this.getIdentifierSize(id3Version);
+        while (currentPosition < ID3FrameBody.length && ID3FrameBody[currentPosition] !== 0x00) {
+            const bodyFrameHeader = Buffer.alloc(textframeHeaderSize);
             ID3FrameBody.copy(bodyFrameHeader, 0, currentPosition);
             const unsynchronized = !!(bodyFrameHeader[9] & 1 << 1);
             const bodyFrameSize = this.getFrameSize(bodyFrameHeader, 4, unsynchronized);
-            if (bodyFrameSize > (frameSize - currentPosition)) {
+            if (bodyFrameSize > (ID3FrameBody.length - currentPosition)) {
                 break;
             }
             const bodyFrameBuffer = Buffer.alloc(bodyFrameSize);
-            ID3FrameBody.copy(bodyFrameBuffer, 0, currentPosition + 10);
+            ID3FrameBody.copy(bodyFrameBuffer, 0, currentPosition + textframeHeaderSize);
             //  Size of sub frame + its header
-            currentPosition += bodyFrameSize + 10;
+            currentPosition += bodyFrameSize + textframeHeaderSize;
             frames.push({
-                name: bodyFrameHeader.toString('utf8', 0, 4),
+                name: bodyFrameHeader.toString('utf8', 0, identifierSize),
                 body: bodyFrameBuffer,
                 unsynchronized,
                 dataLengthIndicator: unsynchronized,
             });
         }
+        return frames;
+    }
+    getTextFrameHeaderSize(version) {
+        switch (version) {
+            case frame_classes_1.TagVersion.v22:
+                return 6;
+            case frame_classes_1.TagVersion.v23:
+            case frame_classes_1.TagVersion.v24:
+            default:
+                return 10;
+        }
+    }
+    getIdentifierSize(version) {
+        switch (version) {
+            case frame_classes_1.TagVersion.v22:
+                return 3;
+            case frame_classes_1.TagVersion.v23:
+            case frame_classes_1.TagVersion.v24:
+            default:
+                return 4;
+        }
+    }
+    getTagsFromFrames(frames, version) {
+        const tags = {
+            raw: {},
+        };
+        const TFrames = this.getVersionedFrameDefinitions(version);
         frames.forEach((frame) => {
             //  Check first character if frame is text frame
             if (frame.name[0] === 'T' && frame.name !== 'TXXX') {
@@ -354,7 +393,7 @@ class NodeID3 {
                 let found = false;
                 Object.keys(TFrames).map((key) => {
                     if (TFrames[key].key === frame.name) {
-                        if (version === frame_definitions_1.TagVersion.v23 && TFrames[key].multiValueSeparator && typeof decoded === 'string') {
+                        if (version === frame_classes_1.TagVersion.v23 && TFrames[key].multiValueSeparator && typeof decoded === 'string') {
                             separator = new RegExp(TFrames[key].multiValueSeparator, 'g');
                             decoded = decoded.replace(separator, multiValueSplitter);
                             decoded = this.splitMultiValues(decoded);
@@ -410,17 +449,17 @@ class NodeID3 {
     getTagVersion(buffer) {
         const framePosition = buffer.indexOf('ID3');
         if (framePosition === -1 || framePosition > 20) {
-            return frame_definitions_1.TagVersion.unknown;
+            return frame_classes_1.TagVersion.unknown;
         }
         else {
             if (buffer[framePosition + 3] === 3) {
-                return frame_definitions_1.TagVersion.v23;
+                return frame_classes_1.TagVersion.v23;
             }
             else if (buffer[framePosition + 3] === 4) {
-                return frame_definitions_1.TagVersion.v24;
+                return frame_classes_1.TagVersion.v24;
             }
             else {
-                return frame_definitions_1.TagVersion.unknown;
+                return frame_classes_1.TagVersion.unknown;
             }
         }
     }
@@ -943,11 +982,86 @@ class NodeID3 {
                 const counterIndex = ratingIndex + 1;
                 if (counterIndex < frame.length) {
                     const value = frame.slice(counterIndex, frame.length);
-                    tags.counter = value.readUInt32BE(0);
+                    if (value.length >= 4) {
+                        tags.counter = value.readUInt32BE(0);
+                    }
                 }
             }
         }
         return tags;
+    }
+    readChapterFrame(frame) {
+        const tags = {};
+        if (!frame) {
+            return tags;
+        }
+        const endOfElementIDString = frame.indexOf(0x00);
+        if (endOfElementIDString === -1 || frame.length - endOfElementIDString - 1 < 16) {
+            return tags;
+        }
+        tags.elementID = iconv.decode(frame.slice(0, endOfElementIDString), 'ISO-8859-1');
+        tags.startTimeMs = frame.readUInt32BE(endOfElementIDString + 1);
+        tags.endTimeMs = frame.readUInt32BE(endOfElementIDString + 5);
+        if (frame.readUInt32BE(endOfElementIDString + 9) !== Buffer.alloc(4, 0xff).readUInt32BE(0)) {
+            tags.startOffsetBytes = frame.readUInt32BE(endOfElementIDString + 9);
+        }
+        if (frame.readUInt32BE(endOfElementIDString + 13) !== Buffer.alloc(4, 0xff).readUInt32BE(0)) {
+            tags.endOffsetBytes = frame.readUInt32BE(endOfElementIDString + 13);
+        }
+        if (frame.length - endOfElementIDString - 17 > 0) {
+            const framesBuffer = frame.slice(endOfElementIDString + 17);
+            // these next two lines have to hardcode a version. V24 and v23 should be handled identically
+            const frames = this.getFramesFromID3Body(framesBuffer, frame_classes_1.TagVersion.v24);
+            tags.tags = this.getTagsFromFrames(frames, frame_classes_1.TagVersion.v24);
+        }
+        return tags;
+    }
+    createChapterFrame(chapter) {
+        if (chapter instanceof Array && chapter.length > 0) {
+            const frames = [];
+            chapter.forEach((tag, index) => {
+                const frame = this.createChapterFrameHelper(tag, index + 1);
+                if (frame) {
+                    frames.push(frame);
+                }
+            });
+            return frames.length ? Buffer.concat(frames) : null;
+        }
+        else {
+            return this.createChapterFrameHelper(chapter, 1);
+        }
+    }
+    createChapterFrameHelper(chapter, id) {
+        if (id === undefined) {
+            // id is currently unused, not sure if this is supposed to be analogous to elementId or what
+        }
+        if (!chapter || !chapter.elementID || chapter.startTimeMs === undefined || !chapter.endTimeMs) {
+            return null;
+        }
+        const header = Buffer.alloc(10, 0);
+        header.write('CHAP');
+        const elementIDBuffer = Buffer.from(chapter.elementID + '\0');
+        const startTimeBuffer = Buffer.alloc(4);
+        startTimeBuffer.writeUInt32BE(chapter.startTimeMs, 0);
+        const endTimeBuffer = Buffer.alloc(4);
+        endTimeBuffer.writeUInt32BE(chapter.endTimeMs, 0);
+        const startOffsetBytesBuffer = Buffer.alloc(4, 0xFF);
+        if (chapter.startOffsetBytes) {
+            startOffsetBytesBuffer.writeUInt32BE(chapter.startOffsetBytes, 0);
+        }
+        const endOffsetBytesBuffer = Buffer.alloc(4, 0xFF);
+        if (chapter.endOffsetBytes) {
+            endOffsetBytesBuffer.writeUInt32BE(chapter.endOffsetBytes, 0);
+        }
+        let frames;
+        if (chapter.tags) {
+            frames = this.createBuffersFromTags(chapter.tags);
+        }
+        const framesBuffer = frames ? Buffer.concat(frames) : Buffer.alloc(0);
+        header.writeUInt32BE(elementIDBuffer.length + 16 + framesBuffer.length, 4);
+        return Buffer.concat([
+            header, elementIDBuffer, startTimeBuffer, endTimeBuffer, startOffsetBytesBuffer, endOffsetBytesBuffer, framesBuffer,
+        ]);
     }
 }
 exports.NodeID3 = NodeID3;

@@ -9,6 +9,7 @@
         "newLine": "LF",
         "allowSyntheticDefaultImports": true,
         "strict": true,
+        "strictPropertyInitialization": false,
         "noUnusedLocals": true,
         "noUnusedParameters": true,
         "sourceMap": true,

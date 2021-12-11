@@ -1,17 +1,11 @@
 "use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var TagVersion;
-(function (TagVersion) {
-    TagVersion["v23"] = "ID3v2.3";
-    TagVersion["v24"] = "ID3v2.4";
-    TagVersion["unknown"] = "unknown";
-})(TagVersion = exports.TagVersion || (exports.TagVersion = {}));
 /*
  **  List of official text information frames
  **  LibraryName: "T***"
  **  Value is the ID of the text frame specified in the link above,
  ** the object's keys are just for simplicity, you can also use the ID directly.
  */
+Object.defineProperty(exports, "__esModule", { value: true });
 exports.ID3v24Frames = {
     album: { key: 'TALB' },
     albumSortOrder: { key: 'TSOA' },
