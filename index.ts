@@ -431,17 +431,23 @@ export class NodeID3 {
                 let decoded: string|string[];
                 let separator = new RegExp('\0', 'g');
                 let encoding = this.getEncodingName(frame.body);
+                let firstDataByte = 1;
                 if (frame.unsynchronized) {
                     frame.body = this.replace(frame.body, 'FF00', Buffer.from([0xFF]));
-                    if (frame.body[0] === 0x00 && frame.body[1] === 0x00 && frame.body[2] === 0x00) {
-                        // const frameLen = frame.body[3];
-                        encoding = this.getEncodingName(frame.body.slice(4));
+                    const BOM = frame.body.indexOf('FFFE', 0, 'hex');
+                    if (BOM > 0 && BOM <= 5) {
+                        // first four bytes appear to by sync-safe int of length not including the
+                        // four bytes (so typcally like: 00 00 00 23)
+                        // then we have encoding byte (should be 1 for utf16)
+                        // then BOM which is FFFE in this case (which necessitates unsynch)
+
+                        // assume encoding byte is directly before BOM
+                        encoding = this.getEncodingName(frame.body.slice(BOM - 1));
+                        firstDataByte = BOM;
                     }
-                    decoded = iconv.decode(frame.body.slice(5), encoding).replace(separator, '');
-                } else {
-                    decoded = iconv.decode(frame.body.slice(1), encoding)
-                                    .replace(separator, multiValueSplitter);
                 }
+                decoded = iconv.decode(frame.body.slice(firstDataByte), encoding)
+                               .replace(separator, multiValueSplitter);
                 decoded = this.splitMultiValues(decoded);
                 tags.raw[frame.name] = decoded;
                 let found = false;
