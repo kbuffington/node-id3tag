@@ -411,7 +411,7 @@ class NodeID3 {
                 if (frame.unsynchronized) {
                     frame.body = this.replace(frame.body, 'FF00', Buffer.from([0xFF]));
                     if (frame.body[0] === 0x00 && frame.body[1] === 0x00 && frame.body[2] === 0x00) {
-                        const frameLen = frame.body[3];
+                        // const frameLen = frame.body[3];
                         encoding = this.getEncodingName(frame.body.slice(4));
                     }
                     decoded = iconv.decode(frame.body.slice(5), encoding).replace(separator, '');
