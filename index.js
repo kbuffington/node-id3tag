@@ -353,6 +353,10 @@ class NodeID3 {
                 unsynchronized,
                 dataLengthIndicator: unsynchronized,
             });
+            // if (unsynchronized) {
+            //     console.log(bodyFrameHeader, bodyFrameSize);
+            //     console.log(frames[frames.length - 1]);
+            // }
         }
         return frames;
     }
@@ -376,6 +380,22 @@ class NodeID3 {
                 return 4;
         }
     }
+    replace(buf, findStr, replaceStr) {
+        if (!Buffer.isBuffer(buf)) {
+            buf = Buffer.from(buf);
+        }
+        const idx = buf.indexOf(findStr, 0, 'hex');
+        if (idx === -1) {
+            return buf;
+        }
+        if (!Buffer.isBuffer(replaceStr)) {
+            replaceStr = Buffer.from(replaceStr);
+        }
+        const before = buf.slice(0, idx);
+        const after = this.replace(buf.slice(idx + findStr.length / 2), findStr, replaceStr);
+        const len = idx + replaceStr.length + after.length;
+        return Buffer.concat([before, replaceStr, after], len);
+    }
     getTagsFromFrames(frames, version) {
         const tags = {
             raw: {},
@@ -387,7 +407,19 @@ class NodeID3 {
                 //  Decode body
                 let decoded;
                 let separator = new RegExp('\0', 'g');
-                decoded = iconv.decode(frame.body.slice(1), this.getEncodingName(frame.body)).replace(separator, multiValueSplitter);
+                let encoding = this.getEncodingName(frame.body);
+                if (frame.unsynchronized) {
+                    frame.body = this.replace(frame.body, 'FF00', Buffer.from([0xFF]));
+                    if (frame.body[0] === 0x00 && frame.body[1] === 0x00 && frame.body[2] === 0x00) {
+                        const frameLen = frame.body[3];
+                        encoding = this.getEncodingName(frame.body.slice(4));
+                    }
+                    decoded = iconv.decode(frame.body.slice(5), encoding).replace(separator, '');
+                }
+                else {
+                    decoded = iconv.decode(frame.body.slice(1), encoding)
+                        .replace(separator, multiValueSplitter);
+                }
                 decoded = this.splitMultiValues(decoded);
                 tags.raw[frame.name] = decoded;
                 let found = false;

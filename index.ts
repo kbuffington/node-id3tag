@@ -348,7 +348,7 @@ export class NodeID3 {
         return this.getTagsFromFrames(frames, id3Version);
     }
 
-    public getFramesFromID3Body(ID3FrameBody: any, id3Version: string) {
+    public getFramesFromID3Body(ID3FrameBody: Buffer, id3Version: string) {
         const frames = [];
         let currentPosition = 0;
         const textframeHeaderSize = this.getTextFrameHeaderSize(id3Version);
@@ -371,6 +371,10 @@ export class NodeID3 {
                 unsynchronized,
                 dataLengthIndicator: unsynchronized,
             });
+            // if (unsynchronized) {
+            //     console.log(bodyFrameHeader, bodyFrameSize);
+            //     console.log(frames[frames.length - 1]);
+            // }
         }
 
         return frames;
@@ -398,6 +402,22 @@ export class NodeID3 {
         }
     }
 
+    private replace(buf: Buffer, findStr: any, replaceStr: Uint8Array): Buffer {
+        if (!Buffer.isBuffer(buf)) {
+            buf = Buffer.from(buf);
+        }
+        const idx = buf.indexOf(findStr, 0, 'hex');
+        if (idx === -1) { return buf; }
+        if (!Buffer.isBuffer(replaceStr)) {
+            replaceStr = Buffer.from(replaceStr);
+        }
+
+        const before = buf.slice(0, idx);
+        const after = this.replace(buf.slice(idx + findStr.length / 2), findStr, replaceStr);
+        const len = idx + replaceStr.length + after.length;
+        return Buffer.concat([ before, replaceStr, after ], len);
+    }
+
     public getTagsFromFrames(frames: Frame[], version: string) {
         const tags: any = {
             raw: {},
@@ -410,8 +430,18 @@ export class NodeID3 {
                 //  Decode body
                 let decoded: string|string[];
                 let separator = new RegExp('\0', 'g');
-                decoded = iconv.decode(frame.body.slice(1),
-                        this.getEncodingName(frame.body)).replace(separator, multiValueSplitter);
+                let encoding = this.getEncodingName(frame.body);
+                if (frame.unsynchronized) {
+                    frame.body = this.replace(frame.body, 'FF00', Buffer.from([0xFF]));
+                    if (frame.body[0] === 0x00 && frame.body[1] === 0x00 && frame.body[2] === 0x00) {
+                        const frameLen = frame.body[3];
+                        encoding = this.getEncodingName(frame.body.slice(4));
+                    }
+                    decoded = iconv.decode(frame.body.slice(5), encoding).replace(separator, '');
+                } else {
+                    decoded = iconv.decode(frame.body.slice(1), encoding)
+                                    .replace(separator, multiValueSplitter);
+                }
                 decoded = this.splitMultiValues(decoded);
                 tags.raw[frame.name] = decoded;
                 let found = false;

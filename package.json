@@ -33,7 +33,7 @@
     },
     "license": "MIT",
     "dependencies": {
-        "iconv-lite": "^0.4.15"
+        "iconv-lite": "^0.4.24"
     },
     "devDependencies": {
         "@types/node": "^10.7.1"
