@@ -694,10 +694,11 @@ export class NodeID3 {
     */
     public createPictureFrame(data: any) {
         try {
-            if (data && data.imageBuffer && data.imageBuffer instanceof Buffer === true) {
+            if (data && data.imageBuffer &&
+                    (data.imageBuffer instanceof Buffer || data.imageBuffer instanceof Uint8Array)) {
                 data = data.imageBuffer;
             }
-            const apicData = (data instanceof Buffer === true)
+            const apicData = (data instanceof Buffer || data instanceof Uint8Array)
                     ? Buffer.from(data)
                     : Buffer.from(fs.readFileSync(data, 'binary'), 'binary');
             const bHeader = Buffer.alloc(10);
@@ -719,6 +720,7 @@ export class NodeID3 {
 
             return Buffer.concat([bHeader, bContent, apicData]);
         } catch (e) {
+            console.warn('Error in createPictureFrame:', e);
             return e;
         }
     }
