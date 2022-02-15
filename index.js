@@ -824,22 +824,43 @@ class NodeID3 {
     /*
     **  frame   => Buffer
     */
-    readCommentFrame(frame) {
+    readCommentFrame(frame, unsynchronized) {
         let tags = {};
         if (!frame) {
             return tags;
         }
-        const encoding = this.getEncodingName(frame[0]);
+        let encoding;
+        let firstDataByte = 1;
+        if (unsynchronized) {
+            frame = this.replace(frame, 'FF00', Buffer.from([0xFF]));
+            const BOM = frame.indexOf('FFFE', 0, 'hex');
+            encoding = this.getEncodingName(frame.slice(4));
+            if (BOM > 4 && BOM <= 9) {
+                // first four bytes appear to by sync-safe int of length not including the
+                // four bytes (so typcally like: 00 00 00 23)
+                // then we have encoding byte (should be 1 for utf16)
+                // then we have 3-digit language code (e.g. "eng")
+                // then we have BOM which is FFFE in this case (which necessitates unsynch)
+                // then shortText
+                // then we have BOM which is FFFE in this case (which necessitates unsynch)
+                // then we have text
+                firstDataByte = 5;
+            }
+        }
+        else {
+            encoding = this.getEncodingName(frame[0]);
+        }
         if (encoding === 'ISO-8859-1' || encoding === 'utf8') {
+            const endLangIndex = firstDataByte + 3;
             tags = {
-                language: iconv.decode(frame, encoding).substring(1, 4).replace(/\0/g, ''),
-                shortText: iconv.decode(frame, encoding).substring(4, frame.indexOf(0x00, 1)).replace(/\0/g, ''),
+                language: iconv.decode(frame, encoding).substring(firstDataByte, endLangIndex).replace(/\0/g, ''),
+                shortText: iconv.decode(frame, encoding).substring(endLangIndex, frame.indexOf(0x00, endLangIndex)).replace(/\0/g, ''),
                 text: iconv.decode(frame, encoding).substring(frame.indexOf(0x00, 1) + 1).replace(/\0/g, ''),
             };
         }
         else if (encoding === 'utf16' || encoding === 'UTF-16BE') {
             // TODO: Test UTF-16BE!
-            let descriptorEscape = 0;
+            let descriptorEscape = firstDataByte - 1;
             while (frame[descriptorEscape] !== undefined && frame[descriptorEscape] !== 0x00 ||
                 frame[descriptorEscape + 1] !== 0x00 || frame[descriptorEscape + 2] === 0x00) {
                 descriptorEscape++;
@@ -847,10 +868,10 @@ class NodeID3 {
             if (frame[descriptorEscape] === undefined) {
                 return tags;
             }
-            const shortText = frame.slice(4, descriptorEscape);
+            const shortText = frame.slice(firstDataByte + 3, descriptorEscape);
             const text = frame.slice(descriptorEscape + 2);
             tags = {
-                language: frame.toString().substring(1, 4).replace(/\0/g, ''),
+                language: frame.toString().substring(firstDataByte, firstDataByte + 3).replace(/\0/g, ''),
                 shortText: iconv.decode(shortText, encoding).replace(/\0/g, ''),
                 text: iconv.decode(text, encoding).replace(/\0/g, ''),
             };
