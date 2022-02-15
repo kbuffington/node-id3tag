@@ -357,7 +357,7 @@ export class NodeID3 {
             const bodyFrameHeader = Buffer.alloc(textframeHeaderSize);
             ID3FrameBody.copy(bodyFrameHeader, 0, currentPosition);
             const unsynchronized = !!(bodyFrameHeader[9] & 1 << 1);
-            const bodyFrameSize = this.getFrameSize(bodyFrameHeader, 4, unsynchronized);
+            const bodyFrameSize = this.getFrameSize(bodyFrameHeader, 4, id3Version === TagVersion.v24);
             if (bodyFrameSize > (ID3FrameBody.length - currentPosition)) {
                 break;
             }
