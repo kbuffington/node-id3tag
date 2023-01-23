@@ -347,17 +347,15 @@ class NodeID3 {
             ID3FrameBody.copy(bodyFrameBuffer, 0, currentPosition + textframeHeaderSize);
             //  Size of sub frame + its header
             currentPosition += bodyFrameSize + textframeHeaderSize;
+            const frameName = bodyFrameHeader.toString('utf8', 0, identifierSize);
             frames.push({
-                name: bodyFrameHeader.toString('utf8', 0, identifierSize),
+                name: frameName,
                 body: bodyFrameBuffer,
                 unsynchronized,
                 dataLengthIndicator: unsynchronized,
             });
-            // if (unsynchronized) {
-            //     console.log(bodyFrameHeader, bodyFrameSize);
-            //     console.log(frames[frames.length - 1]);
-            // }
         }
+        // console.log(frames);
         return frames;
     }
     getTextFrameHeaderSize(version) {
@@ -674,7 +672,12 @@ class NodeID3 {
             bContent.fill(0);
             bContent[mimeType.length + 2] = 0x03; //  Front cover
             bContent.write(mimeType, 1);
-            bHeader.writeUInt32BE(apicData.length + bContent.length, 4); //  Size of frame
+            const frameLength = apicData.length + bContent.length;
+            const encodedSize = this.encodeSize(frameLength);
+            bHeader.writeUInt8(encodedSize[0], 4);
+            bHeader.writeUInt8(encodedSize[1], 5);
+            bHeader.writeUInt8(encodedSize[2], 6);
+            bHeader.writeUInt8(encodedSize[3], 7);
             return Buffer.concat([bHeader, bContent, apicData]);
         }
         catch (e) {
