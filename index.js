@@ -503,6 +503,10 @@ class NodeID3 {
     **  decode  => Boolean
     */
     getFrameSize(buffer, offset, decode) {
+        if (decode && buffer[offset] > 0x80 || buffer[offset + 1] > 0x80 || buffer[offset + 2] > 0x80 || buffer[offset + 3] > 0x80) {
+            // image size was not encoded even though it should have been, so don't decode on read
+            decode = false;
+        }
         if (decode) {
             return this.decodeSize(Buffer.from([buffer[offset], buffer[offset + 1], buffer[offset + 2], buffer[offset + 3]]));
         }
