@@ -9,6 +9,12 @@ var TagVersion;
     TagVersion["unknown"] = "unknown";
 })(TagVersion = exports.TagVersion || (exports.TagVersion = {}));
 class Chapter {
+    elementID;
+    startTimeMs;
+    endTimeMs;
+    startOffsetBytes;
+    endOffsetBytes;
+    tags;
 }
 exports.Chapter = Chapter;
 //# sourceMappingURL=frame-classes.js.map

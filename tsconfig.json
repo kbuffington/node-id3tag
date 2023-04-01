@@ -2,7 +2,6 @@
   "compileOnSave": true,
   "compilerOptions": {
     "module": "CommonJS",
-    "watch": true,
     "target": "ESNext",
     "moduleResolution": "node",
     "pretty": true,
