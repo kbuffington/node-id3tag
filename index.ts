@@ -198,7 +198,7 @@ export class NodeID3 {
         this.writeTagHeaderSize(totalSize, frames[0]);
 
         if (fn && typeof fn === 'function') {
-            fn(Buffer.concat(frames));
+            return fn(Buffer.concat(frames));
         } else {
             return Buffer.concat(frames);
         }
@@ -600,7 +600,7 @@ export class NodeID3 {
 
             return true;
         } else {
-            fs.readFile(filepath, (err: Error, data: Buffer) => {
+            fs.readFile(filepath, (err, data: Buffer) => {
                 if (err) {
                     fn(err);
                 }
@@ -1212,4 +1212,5 @@ export class NodeID3 {
     }
 }
 
-module.exports = new NodeID3();
+const NodeID3Tag = new NodeID3();
+export default NodeID3Tag;

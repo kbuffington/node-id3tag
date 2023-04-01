@@ -6,6 +6,7 @@
  ** the object's keys are just for simplicity, you can also use the ID directly.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.LegacyFramesRemapped = exports.ID3v23Frames = exports.ID3v24Frames = void 0;
 exports.ID3v24Frames = {
     album: { key: 'TALB' },
     albumSortOrder: { key: 'TSOA' },

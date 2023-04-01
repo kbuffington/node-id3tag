@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.NodeID3 = void 0;
 const fs = require("fs");
 const iconv = require("iconv-lite");
 const frame_classes_1 = require("./frame-classes");
@@ -184,7 +185,7 @@ class NodeID3 {
         totalSize -= 10;
         this.writeTagHeaderSize(totalSize, frames[0]);
         if (fn && typeof fn === 'function') {
-            fn(Buffer.concat(frames));
+            return fn(Buffer.concat(frames));
         }
         else {
             return Buffer.concat(frames);
@@ -1126,5 +1127,6 @@ class NodeID3 {
     }
 }
 exports.NodeID3 = NodeID3;
-module.exports = new NodeID3();
+const NodeID3Tag = new NodeID3();
+exports.default = NodeID3Tag;
 //# sourceMappingURL=index.js.map

@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.Chapter = exports.TagVersion = void 0;
 var TagVersion;
 (function (TagVersion) {
     TagVersion["v22"] = "ID3v2.2";
