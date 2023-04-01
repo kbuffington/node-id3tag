@@ -1,5 +1,5 @@
 {
-  "name": "node-id3tag",
+  "name": "@mrpancakes39/node-id3tag",
   "version": "0.9.8",
   "description": "Pure JavaScript ID3 Tag writer/reader",
   "author": "Kevin Buffington, Jan Metzger <jan.metzger@gmx.net>, MrPancakes39",
