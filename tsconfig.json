@@ -1,26 +1,20 @@
 {
-    "compileOnSave": true,
-    "compilerOptions": {
-        "module": "commonjs",
-        "watch": true,
-        "target": "es2017",
-        "moduleResolution": "node",
-        "pretty": true,
-        "newLine": "LF",
-        "allowSyntheticDefaultImports": true,
-        "strict": true,
-        "strictPropertyInitialization": false,
-        "noUnusedLocals": true,
-        "noUnusedParameters": true,
-        "sourceMap": true,
-        "skipLibCheck": true,
-        "allowJs": true,
-        "jsx": "preserve"
-    },
-    "exclude": [
-		"node_modules",
-		"typings/browser.d.ts",
-        "typings/browser",
-        "example"
-	]
+  "compileOnSave": true,
+  "compilerOptions": {
+    "module": "CommonJS",
+    "target": "ESNext",
+    "moduleResolution": "node",
+    "pretty": true,
+    "newLine": "LF",
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "strictPropertyInitialization": false,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "sourceMap": true,
+    "skipLibCheck": true,
+    "allowJs": true,
+    "jsx": "preserve"
+  },
+  "exclude": ["node_modules", "typings/browser.d.ts", "typings/browser", "example"]
 }

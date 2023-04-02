@@ -1,41 +1,44 @@
 {
-    "name": "node-id3tag",
-    "version": "0.9.8",
-    "description": "Pure JavaScript ID3 Tag writer/reader",
-    "author": "Kevin Buffington, Jan Metzger <jan.metzger@gmx.net>",
-    "main": "index.js",
-    "repository": {
-        "type": "git",
-        "url": "git+https://github.com/kbuffington/node-id3tag.git"
-    },
-    "bugs": {
-        "url": "https://github.com/kbuffington/node-id3tag/issues"
-    },
-    "keywords": [
-        "id3",
-        "mp3",
-        "tagger",
-        "tags",
-        "music"
-    ],
-    "licenses": [
-        {
-            "type": "MIT",
-            "url": "https://github.com/kbuffington/node-id3tag/raw/master/LICENSE"
-        }
-    ],
-    "homepage": "https://github.com/kbuffington/node-id3tag#readme",
-    "directories": {
-        "example": "example"
-    },
-    "scripts": {
-        "test": "echo \"Error: no test specified\" && exit 1"
-    },
-    "license": "MIT",
-    "dependencies": {
-        "iconv-lite": "^0.4.24"
-    },
-    "devDependencies": {
-        "@types/node": "^10.7.1"
+  "name": "@mrpancakes39/node-id3tag",
+  "version": "0.9.9",
+  "description": "Pure JavaScript ID3 Tag writer/reader",
+  "author": "Kevin Buffington, Jan Metzger <jan.metzger@gmx.net>, MrPancakes39",
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kbuffington/node-id3tag.git"
+  },
+  "bugs": {
+    "url": "https://github.com/kbuffington/node-id3tag/issues"
+  },
+  "keywords": [
+    "id3",
+    "mp3",
+    "tagger",
+    "tags",
+    "music"
+  ],
+  "licenses": [
+    {
+      "type": "MIT",
+      "url": "https://github.com/kbuffington/node-id3tag/raw/master/LICENSE"
     }
+  ],
+  "homepage": "https://github.com/kbuffington/node-id3tag#readme",
+  "directories": {
+    "example": "example"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "iconv-lite": "^0.4.24"
+  },
+  "devDependencies": {
+    "@types/node": "^10.7.1"
+  }
 }
